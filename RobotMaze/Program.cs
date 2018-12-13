@@ -8,23 +8,18 @@ namespace RobotMaze
         static void Main(string[] args)
         {
             var r = new Robot();
-            r.TestHistory();
+            r.DiscoverMaze();
             Console.ReadKey();
         }
     }
+    //describes actual robot
     public class Robot
-    {
-        /// <summary>
-        /// how many centimeters a robot can walk per step (in centimeters)
-        /// </summary>
-        public int UnitOfMovement { get; set; } = 20;
-        //public List<Directions> DirectionsHistory { get; } = new List<Directions>();
+    {        
         public List<List<RelativeDirections>> DecisionsHistory { get; } = new List<List<RelativeDirections>>();
-
         //all distances are measured in CM by the sensors
         //all units should be multiplied by UnitOfMovement to get actual distance
 
-        public bool IsRunning { get; set; } = true;
+        
         public List<RelativeDirections> DiscoverSurroundings()
         {
             var l = new List<RelativeDirections>();
@@ -65,7 +60,7 @@ namespace RobotMaze
                 {
                     //after taking a decision
                     //check if it will lead to cicles
-                    var zeroDispIndex = HasZeroDisplacementIndex(DecisionsHistory, out var dir);
+                    var zeroDispIndex = HasZeroDisplacement(DecisionsHistory, out AbsoluteDirections absDir);//absDir is useless, just for testing
                     if (zeroDispIndex)
                     {
                         //bad decision !, but it wasn't executed yet
@@ -87,39 +82,20 @@ namespace RobotMaze
                 else
                 {
                     //current decision is a closed road, but unfortionatly, it already moved
-                    //go back, then change direction
+                    //go back, then change direction (invert the last decision)
                     DecisionsHistory.RemoveAt(DecisionsHistory.Count - 1);
                     var parentD = DecisionsHistory[DecisionsHistory.Count - 1];
+                    var lastD = parentD[parentD.Count - 1];
+                    parentD.RemoveAt(parentD.Count - 1);
 
+                    MoveBackwardThenInverse(lastD);
                 }
             }
         }
 
-        public void TestHistory()
-        {
-            var histoy = new List<List<RelativeDirections>>
-            {
-                new List<RelativeDirections>() { RelativeDirections.Front},
-                new List<RelativeDirections>() { RelativeDirections.Right },
-                new List<RelativeDirections>() { RelativeDirections.Front },
 
-                new List<RelativeDirections>() { RelativeDirections.Left },
-                new List<RelativeDirections>() { RelativeDirections.Right },
-                new List<RelativeDirections>() { RelativeDirections.Left },
 
-                new List<RelativeDirections>() { RelativeDirections.Left },
-                new List<RelativeDirections>() { RelativeDirections.Front },
-                new List<RelativeDirections>() { RelativeDirections.Front },
-
-                new List<RelativeDirections>() { RelativeDirections.Left },
-                new List<RelativeDirections>() { RelativeDirections.Front },
-                new List<RelativeDirections>() { RelativeDirections.Front }
-            };
-            bool has = HasZeroDisplacementIndex(histoy, out var dir);
-            Console.WriteLine($"Current Absolute Direction ({dir}), Has zero displacement ? {has}");
-        }
-
-        public bool HasZeroDisplacementIndex(List<List<RelativeDirections>> decisions, out AbsoluteDirections curAbs)
+        public bool HasZeroDisplacement(List<List<RelativeDirections>> decisions, out AbsoluteDirections curAbs)
         {
             int HSum = 0;
             int VSum = 0;
@@ -136,7 +112,6 @@ namespace RobotMaze
                             case RelativeDirections.Right: curAbs = AbsoluteDirections.Down; VSum--; break;
                             case RelativeDirections.Left: curAbs = AbsoluteDirections.Up; VSum++; break;
                             case RelativeDirections.Front: HSum++; break;
-                            case RelativeDirections.Backward: HSum--; break;
                             default: break;
                         }
                         break;
@@ -146,7 +121,6 @@ namespace RobotMaze
                             case RelativeDirections.Right: curAbs = AbsoluteDirections.Up; VSum++; break;
                             case RelativeDirections.Left: curAbs = AbsoluteDirections.Down; VSum--; break;
                             case RelativeDirections.Front: HSum--; break;
-                            case RelativeDirections.Backward: HSum++; break;
                             default: break;
                         }
                         break;
@@ -156,7 +130,7 @@ namespace RobotMaze
                             case RelativeDirections.Right: curAbs = AbsoluteDirections.Right; HSum++; break;
                             case RelativeDirections.Left: curAbs = AbsoluteDirections.Left; HSum--; break;
                             case RelativeDirections.Front: VSum++; break;
-                            case RelativeDirections.Backward: VSum--; break;
+
                             default: break;
                         }
 
@@ -167,7 +141,6 @@ namespace RobotMaze
                             case RelativeDirections.Right: curAbs = AbsoluteDirections.Left; HSum--; break;
                             case RelativeDirections.Left: curAbs = AbsoluteDirections.Right; HSum++; break;
                             case RelativeDirections.Front: VSum--; break;
-                            case RelativeDirections.Backward: VSum++; break;
                             default: break;
                         }
                         break;
@@ -181,57 +154,45 @@ namespace RobotMaze
             }
             return false;
         }
-        public RelativeDirections GetInverse(RelativeDirections d)
-        {
-            switch (d)
-            {
-                case RelativeDirections.Right:
-                    return RelativeDirections.Left;
-                case RelativeDirections.Left:
-                    return RelativeDirections.Right;
-                case RelativeDirections.Front:
-                    return RelativeDirections.Backward;
-                case RelativeDirections.Backward:
-                    return RelativeDirections.Front;
-                default:
-                    return RelativeDirections.Front;
-            }
-        }
 
+        public int CurrentUnitR() { return CurrentDistanceR / UnitOfMovement; }
+        public int CurrentUnitL() { return CurrentDistanceL / UnitOfMovement; }
 
-        //Distance to the right 
-        public int CurrentDistanceR { get; set; }
-        public int CurrentUnitR => CurrentDistanceR / UnitOfMovement;
-
-        //Distance to the left 
-        public int CurrentDistanceL { get; set; }
-        public int CurrentUnitL => CurrentDistanceL / UnitOfMovement;
-
-        //Distance to the front
-        public int CurrentDistanceF { get; set; }
-        public int CurrentUnitF => CurrentDistanceF / UnitOfMovement;
-
+        public int CurrentUnitF() { return CurrentDistanceF / UnitOfMovement; }
 
         public bool IsLeftWalkable()
         {
-            return CurrentUnitL > 0;
+            return CurrentUnitL() > 0;
         }
         public bool IsRightWalkable()
         {
-            return CurrentUnitR > 0;
+            return CurrentUnitR() > 0;
         }
         public bool IsFrontWalkable()
         {
-            return CurrentUnitF > 0;
+            return CurrentUnitF() > 0;
         }
 
-        //robot-specific things
+
+
+        // Robot-specific stuff
+        public bool IsRunning { get; set; } = true; //just for testing, should always be true
+        //how many centimeters a robot can walk per step (in centimeters)        
+        public int UnitOfMovement { get; set; } = 20; //keep changing this untill you get best results
+
+        //Distance to the left         
+        public int CurrentDistanceL { get; set; }
+        //Distance to the right         
+        public int CurrentDistanceR { get; set; }
+        //Distance to the front
+        public int CurrentDistanceF { get; set; }
         public void UpdateSensors()
         {
             CurrentDistanceR = 0;//value from sensor here
             CurrentDistanceL = 0;//value from sensor here
             CurrentDistanceF = 0;//value from sensor here
         }
+
 
         public void ChangeDirectionAndMove(RelativeDirections d)
         {
@@ -246,10 +207,24 @@ namespace RobotMaze
                     //turn left then move forward
                     break;
                 case RelativeDirections.Front:
-                    //move forward
+                    //move forward, without changing direction
                     break;
-                case RelativeDirections.Backward:
-                    //move backward
+                default:
+                    break;
+            }
+        }
+        public void MoveBackwardThenInverse(RelativeDirections d)
+        {
+            switch (d)
+            {
+                case RelativeDirections.Right:
+                    //move backward then turn left
+                    break;
+                case RelativeDirections.Left:
+                    //move backward then turn right
+                    break;
+                case RelativeDirections.Front:
+                    //move backward, without changing direction
                     break;
                 default:
                     break;
@@ -258,17 +233,15 @@ namespace RobotMaze
     }
     public enum RelativeDirections : byte
     {
-        Right, //inverse of right is left
-        Left, //inverse of left is right
-        Front, //inverse of front is Backward
-        Backward //inverse of Backward is front
+        Right = 0, //inverse of right is left
+        Left = 1, //inverse of left is right
+        Front = 2 //inverse of front is Backward        
     }
     public enum AbsoluteDirections : byte
     {
-        Up,
-        Down,
-        Right,
-        Left
+        Up = 0,
+        Down = 1,
+        Right = 2,
+        Left = 3
     }
-
 }
