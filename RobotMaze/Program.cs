@@ -45,6 +45,8 @@ namespace RobotMaze
         }
         public void DiscoverMaze()
         {
+            IsRunning = true;
+            DecisionsHistory.Clear();
             UpdateSensors();
             DecisionsHistory.Add(DiscoverSurroundings());
             while (IsRunning)
@@ -65,10 +67,7 @@ namespace RobotMaze
                     {
                         //bad decision !, but it wasn't executed yet
                         RemoveLastDecision(DecisionsHistory);
-                        if (DecisionsHistory[DecisionsHistory.Count - 1].Count == 0)
-                        {
-                            DecisionsHistory.RemoveAt(DecisionsHistory.Count - 1);
-                        }
+                       
                     }
                     else
                     {
@@ -84,6 +83,11 @@ namespace RobotMaze
                     //current decision is a closed road, but unfortionatly, it already moved
                     //go back, then change direction (invert the last decision)
                     DecisionsHistory.RemoveAt(DecisionsHistory.Count - 1);
+                    if (DecisionsHistory.Count == 0)
+                    {
+                        //Dead end !                        
+                        return;
+                    }
                     var parentD = DecisionsHistory[DecisionsHistory.Count - 1];
                     var lastD = parentD[parentD.Count - 1];
                     parentD.RemoveAt(parentD.Count - 1);
@@ -91,6 +95,7 @@ namespace RobotMaze
                     MoveBackwardThenInverse(lastD);
                 }
             }
+            DecisionsHistory.RemoveAll(x => x.Count == 0); //optional
         }
 
 
